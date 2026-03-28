@@ -47,9 +47,11 @@ def cmd_rename(old_title: str, new_title: str, dry_run: bool) -> None:
         console.print("\n[yellow]Dry run — no changes made.[/yellow]")
         return
 
-    # Rewrite the note's title in frontmatter if it matched the old stem
-    if note._data.get("title", "").lower() == old_title.lower():
+    # Update title frontmatter to match new name whenever the field exists,
+    # then save before renaming (rename() moves the file, doesn't write data).
+    if "title" in note._data:
         note._data["title"] = new_title
+        note.save()
     note.path.rename(new_path)
 
     # Update all backlinks

@@ -149,6 +149,12 @@ class TestCapture:
         result = runner.invoke(cli, ["capture", ""])
         assert result.exit_code != 0
 
+    def test_capture_from_stdin(self, runner, cli_cfg, vault_root):
+        result = runner.invoke(cli, ["capture"], input="piped thought\n")
+        assert result.exit_code == 0
+        inbox = (vault_root / "inbox.md").read_text(encoding="utf-8")
+        assert "piped thought" in inbox
+
 
 class TestLinks:
     def test_links_command(self, runner, cli_cfg):
@@ -270,6 +276,30 @@ class TestRenameRepairLinks:
         result = runner.invoke(cli, ["rename", "orphan", "renamed-orphan", "--dry-run"])
         assert result.exit_code == 0
         assert "Dry run" in result.output
+
+    def test_rename_updates_title_frontmatter(self, runner, cli_cfg, vault_root):
+        # Note with title that differs from stem
+        (vault_root / "old-stem.md").write_text(
+            "---\ntitle: Old Title\n---\n\nBody.", encoding="utf-8"
+        )
+        result = runner.invoke(cli, ["rename", "old-stem", "New Title"])
+        assert result.exit_code == 0
+        new_path = vault_root / "new-title.md"
+        assert new_path.exists()
+        assert not (vault_root / "old-stem.md").exists()
+        content = new_path.read_text(encoding="utf-8")
+        assert "New Title" in content
+        assert "Old Title" not in content
+
+    def test_rename_no_title_field_leaves_no_title(self, runner, cli_cfg, vault_root):
+        # Note with no title frontmatter — rename should not inject one
+        (vault_root / "bare-note.md").write_text("Just a body.", encoding="utf-8")
+        result = runner.invoke(cli, ["rename", "bare-note", "Renamed Bare"])
+        assert result.exit_code == 0
+        new_path = vault_root / "renamed-bare.md"
+        assert new_path.exists()
+        content = new_path.read_text(encoding="utf-8")
+        assert "title:" not in content
 
 
 class TestGraphOrphans:
