@@ -47,6 +47,23 @@ class TestResolve:
         assert vault.resolve("ALPHA") is not None
         assert vault.resolve("alpha") is not None
 
+    def test_resolve_by_title_differs_from_stem(self, vault_root):
+        # Create a note where title diverges from filename
+        (vault_root / "my-long-filename.md").write_text(
+            "---\ntitle: Short Title\n---\n\nBody.", encoding="utf-8"
+        )
+        vault = Vault.load(vault_root)
+        note = vault.resolve("Short Title")
+        assert note is not None
+        assert note.stem == "my-long-filename"
+
+    def test_resolve_by_title_case_insensitive(self, vault_root):
+        (vault_root / "another-note.md").write_text(
+            "---\ntitle: Fancy Note Title\n---\n\nBody.", encoding="utf-8"
+        )
+        vault = Vault.load(vault_root)
+        assert vault.resolve("fancy note title") is not None
+
     def test_resolve_by_alias(self, vault):
         # beta.md has alias "B Note"
         note = vault.resolve("B Note")

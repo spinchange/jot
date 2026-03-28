@@ -38,6 +38,7 @@ class Vault:
                 continue
             key = note.stem.lower()
             v._by_stem[key] = note
+            v._by_alias[note.title.lower()] = note
             for alias in note.aliases:
                 v._by_alias[alias.lower()] = note
         return v
@@ -52,6 +53,7 @@ class Vault:
                 continue
             key = note.stem.lower()
             self._by_stem[key] = note
+            self._by_alias[note.title.lower()] = note
             for alias in note.aliases:
                 self._by_alias[alias.lower()] = note
 
