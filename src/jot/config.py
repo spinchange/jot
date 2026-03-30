@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import socket
+import os
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Any
@@ -20,6 +22,8 @@ class Config:
     dashboard_limit: int = 5
     templates: str = ""
     queries: str = ""
+    author: str = ""
+    hostname: str = ""
 
     # ------------------------------------------------------------------ #
     # Load / save
@@ -41,6 +45,8 @@ class Config:
             dashboard_limit=data.get("dashboardLimit", 5),
             templates=data.get("templates", ""),
             queries=data.get("queries", ""),
+            author=data.get("author", ""),
+            hostname=data.get("hostname", ""),
         )
 
     def save(self) -> None:
@@ -53,6 +59,8 @@ class Config:
             "dashboardLimit": self.dashboard_limit,
             "templates": self.templates,
             "queries": self.queries,
+            "author": self.author,
+            "hostname": self.hostname,
         }
         CONFIG_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
@@ -66,6 +74,14 @@ class Config:
             p = Path(self.vault).expanduser()
             return p if p.is_dir() else None
         return None
+
+    def resolve_author(self) -> str:
+        """Return configured author, falling back to OS username."""
+        return self.author or os.getlogin()
+
+    def resolve_hostname(self) -> str:
+        """Return configured hostname, falling back to system hostname."""
+        return self.hostname or socket.gethostname()
 
     def require_vault(self) -> Path:
         """Return vault path or raise with a friendly message."""

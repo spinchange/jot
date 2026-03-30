@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 import click
 from rich.console import Console
 from rich.table import Table
@@ -111,6 +112,13 @@ def props_set(title: str, key: str, value: str) -> None:
     # Attempt to coerce common types
     coerced = _coerce(value)
     note.set_prop(key, coerced)
+
+    if key == "status":
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+        hostname = cfg.resolve_hostname()
+        author = cfg.resolve_author()
+        note.append_status_log(f"{coerced} · {ts} · {hostname} · {author}")
+
     note.save()
     console.print(f"[green]Set[/green] {key} = {coerced!r}")
 

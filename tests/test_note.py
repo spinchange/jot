@@ -165,3 +165,30 @@ class TestProps:
         n2 = Note.load(n.path)
         assert n2.get_prop("status") == "active"
         assert n2.body == "\nBody."
+
+
+class TestStatusLog:
+    def test_status_log_empty_when_absent(self, tmp_path):
+        n = write_note(tmp_path, "note.md", "---\nstatus: draft\n---\n\nBody.")
+        assert n.status_log == []
+
+    def test_append_status_log(self, tmp_path):
+        n = write_note(tmp_path, "note.md", "---\nstatus: draft\n---\n\nBody.")
+        n.append_status_log("active · 2026-03-29 14:32 · Nova · claude")
+        assert len(n.status_log) == 1
+        assert "active" in n.status_log[0]
+
+    def test_status_log_append_only(self, tmp_path):
+        n = write_note(tmp_path, "note.md", "---\nstatus: draft\n---\n\nBody.")
+        n.append_status_log("draft · 2026-03-28 10:00 · Luna · claude")
+        n.append_status_log("active · 2026-03-29 14:32 · Nova · chris")
+        assert len(n.status_log) == 2
+        assert n.status_log[0].startswith("draft")
+        assert n.status_log[1].startswith("active")
+
+    def test_status_log_round_trip(self, tmp_path):
+        n = write_note(tmp_path, "note.md", "---\nstatus: draft\n---\n\nBody.")
+        n.append_status_log("active · 2026-03-29 14:32 · Nova · claude")
+        n.save()
+        n2 = Note.load(n.path)
+        assert n2.status_log == ["active · 2026-03-29 14:32 · Nova · claude"]

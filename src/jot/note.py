@@ -119,6 +119,18 @@ class Note:
         return self._data.get("hostname")
 
     @property
+    def status_log(self) -> list[str]:
+        raw = self._data.get("status_log") or []
+        if isinstance(raw, str):
+            return [raw]
+        return list(raw)
+
+    def append_status_log(self, entry: str) -> None:
+        existing = self.status_log
+        existing.append(entry)
+        self._data["status_log"] = existing
+
+    @property
     def due(self) -> date | None:
         raw = self._data.get("due")
         if isinstance(raw, date):
