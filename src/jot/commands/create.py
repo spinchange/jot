@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 import click
@@ -35,8 +35,8 @@ def _ensure_dir(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
 
 
-def _create_note(path: Path, title: str | None = None, template_text: str | None = None) -> None:
-    """Write a minimal note stub if the file doesn't exist."""
+def _create_note(path: Path, title: str | None = None, template_text: str | None = None, cfg: Config | None = None) -> None:
+    """Write a canonical note stub if the file doesn't exist."""
     if path.exists():
         return
     _ensure_dir(path)
@@ -45,8 +45,25 @@ def _create_note(path: Path, title: str | None = None, template_text: str | None
     if template_text:
         path.write_text(template_text, encoding="utf-8")
     else:
+        if cfg is None:
+            cfg = Config.load()
         today = date.today().isoformat()
-        content = f"---\ntitle: {heading}\ndate: {today}\n---\n\n# {heading}\n"
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+        author = cfg.resolve_author()
+        hostname = cfg.resolve_hostname()
+        status_entry = f"draft · {ts} · {hostname} · {author}"
+        content = (
+            f"---\n"
+            f"title: {heading}\n"
+            f"tags: []\n"
+            f"author: {author}\n"
+            f"hostname: {hostname}\n"
+            f"date: {today}\n"
+            f"status: draft\n"
+            f"status_log:\n"
+            f"  - {status_entry}\n"
+            f"---\n\n# {heading}\n"
+        )
         path.write_text(content, encoding="utf-8")
 
 
@@ -73,7 +90,7 @@ def cmd_new(title: str, no_open: bool) -> None:
 
     stem = title.lower().replace(" ", "-")
     path = root / f"{stem}.md"
-    _create_note(path, title=title)
+    _create_note(path, title=title, cfg=cfg)
     console.print(f"[green]Created[/green] {path.relative_to(root)}")
     if not no_open:
         _open_in_editor(path, cfg)
@@ -93,7 +110,7 @@ def cmd_open(title: str) -> None:
     else:
         stem = title.lower().replace(" ", "-")
         path = root / f"{stem}.md"
-        _create_note(path, title=title)
+        _create_note(path, title=title, cfg=cfg)
         console.print(f"[green]Created[/green] {path.relative_to(root)}")
 
     _open_in_editor(path, cfg)
@@ -120,8 +137,12 @@ def cmd_daily(date_str: str | None, no_open: bool) -> None:
     if not path.exists():
         _ensure_dir(path)
         heading = f"Daily Note — {d.isoformat()}"
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+        author = cfg.resolve_author()
+        hostname = cfg.resolve_hostname()
+        status_entry = f"draft · {ts} · {hostname} · {author}"
         path.write_text(
-            f"---\ndate: {d.isoformat()}\ntags:\n  - daily\n---\n\n# {heading}\n\n## Notes\n\n## Tasks\n",
+            f"---\ntitle: {heading}\ntags:\n  - daily\nauthor: {author}\nhostname: {hostname}\ndate: {d.isoformat()}\nstatus: draft\nstatus_log:\n  - {status_entry}\n---\n\n# {heading}\n\n## Notes\n\n## Tasks\n",
             encoding="utf-8",
         )
         console.print(f"[green]Created[/green] {path.relative_to(root)}")
@@ -155,8 +176,13 @@ def cmd_weekly(date_str: str | None, no_open: bool) -> None:
 
     if not path.exists():
         _ensure_dir(path)
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+        author = cfg.resolve_author()
+        hostname = cfg.resolve_hostname()
+        status_entry = f"draft · {ts} · {hostname} · {author}"
+        heading = f"Week {week_label}"
         path.write_text(
-            f"---\ndate: {d.isoformat()}\ntags:\n  - weekly\n---\n\n# Week {week_label}\n\n## Goals\n\n## Review\n",
+            f"---\ntitle: {heading}\ntags:\n  - weekly\nauthor: {author}\nhostname: {hostname}\ndate: {d.isoformat()}\nstatus: draft\nstatus_log:\n  - {status_entry}\n---\n\n# {heading}\n\n## Goals\n\n## Review\n",
             encoding="utf-8",
         )
         console.print(f"[green]Created[/green] {path.relative_to(root)}")
@@ -189,8 +215,12 @@ def cmd_monthly(date_str: str | None, no_open: bool) -> None:
 
     if not path.exists():
         _ensure_dir(path)
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+        author = cfg.resolve_author()
+        hostname = cfg.resolve_hostname()
+        status_entry = f"draft · {ts} · {hostname} · {author}"
         path.write_text(
-            f"---\ndate: {d.isoformat()}\ntags:\n  - monthly\n---\n\n# {month_label}\n\n## Goals\n\n## Review\n",
+            f"---\ntitle: {month_label}\ntags:\n  - monthly\nauthor: {author}\nhostname: {hostname}\ndate: {d.isoformat()}\nstatus: draft\nstatus_log:\n  - {status_entry}\n---\n\n# {month_label}\n\n## Goals\n\n## Review\n",
             encoding="utf-8",
         )
         console.print(f"[green]Created[/green] {path.relative_to(root)}")
