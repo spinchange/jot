@@ -29,12 +29,20 @@ def parse(text: str) -> tuple[dict[str, Any], str]:
     return data, body
 
 
+class _IndentedDumper(yaml.Dumper):
+    """YAML dumper that indents list items under their key."""
+
+    def increase_indent(self, flow: bool = False, indentless: bool = False) -> None:
+        return super().increase_indent(flow=flow, indentless=False)
+
+
 def dump(frontmatter: dict[str, Any], body: str) -> str:
     """Combine frontmatter dict and body back into a markdown string."""
     if not frontmatter:
         return body
     fm_text = yaml.dump(
         frontmatter,
+        Dumper=_IndentedDumper,
         default_flow_style=False,
         allow_unicode=True,
         sort_keys=False,

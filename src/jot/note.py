@@ -111,6 +111,10 @@ class Note:
         return self._data.get("status")
 
     @property
+    def author(self) -> str | None:
+        return self._data.get("author")
+
+    @property
     def due(self) -> date | None:
         raw = self._data.get("due")
         if isinstance(raw, date):

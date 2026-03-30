@@ -86,3 +86,17 @@ class TestDump:
         result = fm.dump(data, body)
         assert result.startswith("---\n")
         assert "\n---\n" in result
+
+    def test_list_items_indented_under_key(self):
+        data = {"tags": ["a", "b", "c"]}
+        result = fm.dump(data, "")
+        assert "  - a" in result
+        assert "  - b" in result
+
+    def test_author_field_preserved(self):
+        data = {"source": "ai", "author": "claude"}
+        body = "\nBody.\n"
+        result = fm.dump(data, body)
+        data2, _ = fm.parse(result)
+        assert data2["author"] == "claude"
+        assert data2["source"] == "ai"
