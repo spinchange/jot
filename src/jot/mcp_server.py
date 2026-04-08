@@ -7,13 +7,24 @@ import re
 from pathlib import Path
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+try:
+    from mcp.server.fastmcp import FastMCP
+    _mcp = FastMCP("jot")
+    _MCP_AVAILABLE = True
+except ImportError:
+    _mcp = None  # type: ignore[assignment]
+    _MCP_AVAILABLE = False
 
 from jot.config import Config
 from jot.vault import Vault
 from jot import frontmatter as fm
 
-mcp = FastMCP("jot")
+
+def _tool(fn):  # type: ignore[return]
+    """Decorator: register as MCP tool only when mcp is available."""
+    if _MCP_AVAILABLE:
+        return _mcp.tool()(fn)
+    return fn
 
 
 def _load_vault() -> tuple[Vault, Path]:
@@ -28,7 +39,7 @@ def _load_vault() -> tuple[Vault, Path]:
 # ------------------------------------------------------------------ #
 
 
-@mcp.tool()
+@_tool
 def vault_search(query: str) -> list[dict[str, Any]]:
     """Full-text search across all notes.
 
@@ -57,7 +68,7 @@ def vault_search(query: str) -> list[dict[str, Any]]:
     return results
 
 
-@mcp.tool()
+@_tool
 def vault_read(path: str) -> dict[str, Any]:
     """Read a note by its vault-relative path.
 
@@ -81,7 +92,7 @@ def vault_read(path: str) -> dict[str, Any]:
     }
 
 
-@mcp.tool()
+@_tool
 def vault_write(path: str, body: str, frontmatter: dict[str, Any]) -> str:
     """Write or update a note at vault-relative *path*.
 
@@ -95,7 +106,7 @@ def vault_write(path: str, body: str, frontmatter: dict[str, Any]) -> str:
     return str(note_path.relative_to(root))
 
 
-@mcp.tool()
+@_tool
 def vault_list(
     tag: str | None = None,
     status: str | None = None,
@@ -128,7 +139,7 @@ def vault_list(
     ]
 
 
-@mcp.tool()
+@_tool
 def vault_query(
     tag: str | None = None,
     status: str | None = None,
@@ -175,7 +186,7 @@ def vault_query(
     ]
 
 
-@mcp.tool()
+@_tool
 def vault_backlinks(path: str) -> list[dict[str, Any]]:
     """Return all notes that link to the note at vault-relative *path*.
 
@@ -209,7 +220,15 @@ def vault_backlinks(path: str) -> list[dict[str, Any]]:
 
 def main() -> None:
     """Start the MCP server (called by `jot mcp` and the jot-mcp entry point)."""
-    mcp.run()
+    if not _MCP_AVAILABLE:
+        import sys
+        print(
+            "Error: the 'mcp' package is not installed.\n"
+            "Install it with:  pip install mcp",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    _mcp.run()
 
 
 if __name__ == "__main__":
