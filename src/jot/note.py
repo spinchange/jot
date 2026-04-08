@@ -9,7 +9,8 @@ from typing import Any
 
 from jot import frontmatter as fm
 
-# Matches [[Title]] and [[Title|Display]]
+# Matches [[Title]] and [[Title|Display]].
+# This is the canonical definition — publish.py imports it from here.
 _WIKILINK_RE = re.compile(r"\[\[([^\]|#\n]+?)(?:\|([^\]\n]+))?\]\]")
 
 # Inline tag: #word or #word/subword, not inside code spans or fences

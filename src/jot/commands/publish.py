@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 from pathlib import Path
@@ -10,11 +11,10 @@ import click
 from rich.console import Console
 
 from jot.config import Config
+from jot.note import _WIKILINK_RE
 from jot.vault import Vault
 
 console = Console()
-
-_WIKILINK_RE = re.compile(r"\[\[([^\]|#\n]+?)(?:\|([^\]\n]+))?\]\]")
 
 
 @click.command("publish")
@@ -97,13 +97,4 @@ def _transform_wikilinks(text: str, note, vault: Vault, root: Path) -> str:
 
 def _relative_link(from_path: Path, to_path: Path) -> str:
     """Compute a relative URL from from_path's directory to to_path."""
-    from_dir = from_path.parent
-    try:
-        rel = to_path.relative_to(from_dir)
-        return rel.as_posix()
-    except ValueError:
-        # Need to go up
-        common = Path(*[p for p, q in zip(from_dir.parts, to_path.parts) if p == q])
-        up = len(from_dir.parts) - len(common.parts)
-        down = to_path.relative_to(common)
-        return "/".join([".."] * up) + "/" + down.as_posix()
+    return Path(os.path.relpath(to_path, from_path.parent)).as_posix()
