@@ -11,10 +11,12 @@ dependencies = [
     "click>=8.1",
     "PyYAML>=6.0",
     "rich>=13.0",
+    "mcp>=1.0",
 ]
 
 [project.scripts]
 jot = "jot.cli:cli"
+jot-mcp = "jot.mcp_server:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
