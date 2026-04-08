@@ -50,10 +50,10 @@ class Config:
         dashboard_limit = data.get("dashboardLimit", 5)
         if not isinstance(dashboard_limit, int) or dashboard_limit <= 0:
             click.echo(
-                f"Warning: dashboardLimit must be a positive integer (got {dashboard_limit!r}) — defaulting to 10.",
+                f"Warning: dashboardLimit must be a positive integer (got {dashboard_limit!r}) — defaulting to 5.",
                 err=True,
             )
-            dashboard_limit = 10
+            dashboard_limit = 5
 
         return cls(
             vault=data.get("vault", ""),
