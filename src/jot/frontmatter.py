@@ -10,20 +10,36 @@ import yaml
 _FENCE_RE = re.compile(r"^---[ \t]*\n(.*?)\n---[ \t]*\n", re.DOTALL)
 
 
-def parse(text: str) -> tuple[dict[str, Any], str]:
+def parse(text: str, path: str | None = None) -> tuple[dict[str, Any], str]:
     """Split a markdown string into (frontmatter_dict, body).
 
     Returns ({}, text) if no valid frontmatter block is present.
     Unknown fields are preserved as-is.
+
+    If a YAML parse error occurs, a warning is emitted to stderr and the
+    function falls back to ({}, text) so the caller can continue.  Pass
+    *path* (a file path string) to include it in the warning message.
     """
+    import click
+
     m = _FENCE_RE.match(text)
     if not m:
         return {}, text
     try:
         data = yaml.safe_load(m.group(1)) or {}
-    except yaml.YAMLError:
+    except yaml.YAMLError as exc:
+        location = f" in {path}" if path else ""
+        click.echo(
+            f"Warning: could not parse frontmatter{location}: {exc}",
+            err=True,
+        )
         return {}, text
     if not isinstance(data, dict):
+        location = f" in {path}" if path else ""
+        click.echo(
+            f"Warning: frontmatter{location} is not a YAML mapping — ignoring.",
+            err=True,
+        )
         return {}, text
     body = text[m.end():]
     return data, body

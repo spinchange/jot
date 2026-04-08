@@ -33,7 +33,7 @@ class Note:
     @classmethod
     def load(cls, path: Path) -> "Note":
         text = path.read_text(encoding="utf-8")
-        data, body = fm.parse(text)
+        data, body = fm.parse(text, path=str(path))
         return cls(path, data, body)
 
     # ------------------------------------------------------------------ #
