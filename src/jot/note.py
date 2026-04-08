@@ -9,7 +9,8 @@ from typing import Any
 
 from jot import frontmatter as fm
 
-# Matches [[Title]] and [[Title|Display]]
+# Matches [[Title]] and [[Title|Display]].
+# This is the canonical definition — publish.py imports it from here.
 _WIKILINK_RE = re.compile(r"\[\[([^\]|#\n]+?)(?:\|([^\]\n]+))?\]\]")
 
 # Inline tag: #word or #word/subword, not inside code spans or fences
@@ -33,7 +34,7 @@ class Note:
     @classmethod
     def load(cls, path: Path) -> "Note":
         text = path.read_text(encoding="utf-8")
-        data, body = fm.parse(text)
+        data, body = fm.parse(text, path=str(path))
         return cls(path, data, body)
 
     # ------------------------------------------------------------------ #
