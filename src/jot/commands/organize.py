@@ -145,7 +145,12 @@ def cmd_split(title: str, heading: str, dry_run: bool) -> None:
         raise click.ClickException(f"Heading {heading!r} not found in {title!r}")
 
     # Find the end of the section (next same-or-higher-level heading, or EOF)
-    heading_level = len(re.match(r"^(#+)", lines[split_line]).group(1))
+    _heading_match = re.match(r"^(#+)", lines[split_line])
+    if not _heading_match:
+        raise click.UsageError(
+            f"Line {split_line} is not a heading: {lines[split_line]!r}"
+        )
+    heading_level = len(_heading_match.group(1))
     end_line = len(lines)
     for i in range(split_line + 1, len(lines)):
         m = re.match(r"^(#+)\s", lines[i])
