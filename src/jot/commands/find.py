@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
+import sys
 from pathlib import Path
+from typing import Literal
 
 import click
 from rich.console import Console
@@ -16,12 +19,62 @@ from jot.vault import Vault
 
 console = Console()
 
+FormatChoice = Literal["rich", "plain", "json"]
+
+
+def _render_notes(notes: list, root: Path, fmt: FormatChoice) -> None:
+    """Render a list of notes in the requested format.
+
+    rich  — coloured Rich table (default, existing behaviour)
+    plain — one filepath per line to stdout, no ANSI
+    json  — JSON array of {path, title, tags, status} objects to stdout
+    """
+    if fmt == "json":
+        data = [
+            {
+                "path": str(note.path.relative_to(root)),
+                "title": note.title,
+                "tags": note.tags,
+                "status": note.status or "",
+            }
+            for note in notes
+        ]
+        click.echo(json.dumps(data, indent=2))
+        return
+
+    if fmt == "plain":
+        for note in notes:
+            click.echo(str(note.path.relative_to(root)))
+        return
+
+    # fmt == "rich" (default)
+    table = Table(box=box.SIMPLE, show_header=True, header_style="bold")
+    table.add_column("Note", style="cyan")
+    table.add_column("Tags", style="dim")
+    table.add_column("Status", style="dim")
+
+    for note in notes:
+        rel = str(note.path.relative_to(root))
+        tags_str = " ".join(f"#{t}" for t in note.tags[:5])
+        table.add_row(rel, tags_str, note.status or "")
+
+    console.print(table)
+    console.print(f"[dim]{len(notes)} note(s)[/dim]")
+
 
 @click.command("list")
 @click.option("--tag", "-t", default=None, help="Filter by tag.")
 @click.option("--folder", "-f", default=None, help="Filter by subfolder.")
 @click.option("--status", "-s", default=None, help="Filter by frontmatter status.")
-def cmd_list(tag: str | None, folder: str | None, status: str | None) -> None:
+@click.option(
+    "--format",
+    "fmt",
+    type=click.Choice(["rich", "plain", "json"]),
+    default="rich",
+    show_default=True,
+    help="Output format.",
+)
+def cmd_list(tag: str | None, folder: str | None, status: str | None, fmt: FormatChoice) -> None:
     """List notes in the vault."""
     cfg = Config.load()
     root = cfg.require_vault()
@@ -41,27 +94,27 @@ def cmd_list(tag: str | None, folder: str | None, status: str | None) -> None:
     notes = sorted(notes, key=lambda n: str(n.path.relative_to(root)))
 
     if not notes:
-        console.print("[dim]No notes found.[/dim]")
+        if fmt == "rich":
+            console.print("[dim]No notes found.[/dim]")
+        elif fmt == "json":
+            click.echo("[]")
         return
 
-    table = Table(box=box.SIMPLE, show_header=True, header_style="bold")
-    table.add_column("Note", style="cyan")
-    table.add_column("Tags", style="dim")
-    table.add_column("Status", style="dim")
-
-    for note in notes:
-        rel = str(note.path.relative_to(root))
-        tags_str = " ".join(f"#{t}" for t in note.tags[:5])
-        table.add_row(rel, tags_str, note.status or "")
-
-    console.print(table)
-    console.print(f"[dim]{len(notes)} note(s)[/dim]")
+    _render_notes(notes, root, fmt)
 
 
 @click.command("search")
 @click.argument("query")
 @click.option("--case-sensitive", is_flag=True)
-def cmd_search(query: str, case_sensitive: bool) -> None:
+@click.option(
+    "--format",
+    "fmt",
+    type=click.Choice(["rich", "plain", "json"]),
+    default="rich",
+    show_default=True,
+    help="Output format.",
+)
+def cmd_search(query: str, case_sensitive: bool, fmt: FormatChoice) -> None:
     """Full-text search across all notes."""
     cfg = Config.load()
     root = cfg.require_vault()
@@ -71,13 +124,34 @@ def cmd_search(query: str, case_sensitive: bool) -> None:
     results = sorted(results, key=lambda n: n.title)
 
     if not results:
-        console.print("[dim]No results.[/dim]")
+        if fmt == "rich":
+            console.print("[dim]No results.[/dim]")
+        elif fmt == "json":
+            click.echo("[]")
         return
 
+    if fmt == "json":
+        data = [
+            {
+                "path": str(note.path.relative_to(root)),
+                "title": note.title,
+                "tags": note.tags,
+                "status": note.status or "",
+            }
+            for note in results
+        ]
+        click.echo(json.dumps(data, indent=2))
+        return
+
+    if fmt == "plain":
+        for note in results:
+            click.echo(str(note.path.relative_to(root)))
+        return
+
+    # rich
     for note in results:
         rel = str(note.path.relative_to(root))
         console.print(f"[cyan]{rel}[/cyan]  [dim]{note.title}[/dim]")
-
     console.print(f"\n[dim]{len(results)} result(s)[/dim]")
 
 
@@ -107,7 +181,15 @@ def cmd_find(pattern: str) -> None:
 
 @click.command("recent")
 @click.argument("n", default=10, type=int, required=False)
-def cmd_recent(n: int) -> None:
+@click.option(
+    "--format",
+    "fmt",
+    type=click.Choice(["rich", "plain", "json"]),
+    default="rich",
+    show_default=True,
+    help="Output format.",
+)
+def cmd_recent(n: int, fmt: FormatChoice) -> None:
     """Show the N most recently modified notes."""
     cfg = Config.load()
     root = cfg.require_vault()
@@ -116,9 +198,31 @@ def cmd_recent(n: int) -> None:
     notes = vault.recent(n)
 
     if not notes:
-        console.print("[dim]No notes.[/dim]")
+        if fmt == "rich":
+            console.print("[dim]No notes.[/dim]")
+        elif fmt == "json":
+            click.echo("[]")
         return
 
+    if fmt == "json":
+        data = [
+            {
+                "path": str(note.path.relative_to(root)),
+                "title": note.title,
+                "tags": note.tags,
+                "status": note.status or "",
+            }
+            for note in notes
+        ]
+        click.echo(json.dumps(data, indent=2))
+        return
+
+    if fmt == "plain":
+        for note in notes:
+            click.echo(str(note.path.relative_to(root)))
+        return
+
+    # rich
     table = Table(box=box.SIMPLE, show_header=True, header_style="bold")
     table.add_column("Note", style="cyan")
     table.add_column("Modified", style="dim")
@@ -134,7 +238,15 @@ def cmd_recent(n: int) -> None:
 
 @click.command("stale")
 @click.option("--days", default=None, type=int, help="Override stale threshold (days).")
-def cmd_stale(days: int | None) -> None:
+@click.option(
+    "--format",
+    "fmt",
+    type=click.Choice(["rich", "plain", "json"]),
+    default="rich",
+    show_default=True,
+    help="Output format.",
+)
+def cmd_stale(days: int | None, fmt: FormatChoice) -> None:
     """List notes not modified recently."""
     cfg = Config.load()
     root = cfg.require_vault()
@@ -144,9 +256,31 @@ def cmd_stale(days: int | None) -> None:
     notes = vault.stale(threshold)
 
     if not notes:
-        console.print(f"[dim]No stale notes (threshold: {threshold} days).[/dim]")
+        if fmt == "rich":
+            console.print(f"[dim]No stale notes (threshold: {threshold} days).[/dim]")
+        elif fmt == "json":
+            click.echo("[]")
         return
 
+    if fmt == "json":
+        data = [
+            {
+                "path": str(note.path.relative_to(root)),
+                "title": note.title,
+                "tags": note.tags,
+                "status": note.status or "",
+            }
+            for note in notes
+        ]
+        click.echo(json.dumps(data, indent=2))
+        return
+
+    if fmt == "plain":
+        for note in notes:
+            click.echo(str(note.path.relative_to(root)))
+        return
+
+    # rich
     from datetime import datetime
     table = Table(box=box.SIMPLE, show_header=True, header_style="bold")
     table.add_column("Note", style="cyan")
