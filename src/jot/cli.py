@@ -28,6 +28,13 @@ from jot.commands.config_cmd import config_group
 from jot.commands.publish import cmd_publish
 
 
+@click.command("mcp")
+def cmd_mcp() -> None:
+    """Start the MCP server for AI model vault access."""
+    from jot.mcp_server import main
+    main()
+
+
 @click.group()
 @click.version_option(package_name="jot")
 def cli() -> None:
@@ -93,3 +100,6 @@ cli.add_command(config_group, "config")
 
 # Publish
 cli.add_command(cmd_publish, "publish")
+
+# MCP server
+cli.add_command(cmd_mcp, "mcp")
