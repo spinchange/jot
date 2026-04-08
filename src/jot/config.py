@@ -9,6 +9,8 @@ from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Any
 
+import click
+
 CONFIG_DIR = Path.home() / ".jot"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
@@ -37,12 +39,28 @@ class Config:
             data: dict[str, Any] = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
             return cls()
+        stale_days = data.get("staleDays", 30)
+        if not isinstance(stale_days, int) or stale_days <= 0:
+            click.echo(
+                f"Warning: staleDays must be a positive integer (got {stale_days!r}) — defaulting to 30.",
+                err=True,
+            )
+            stale_days = 30
+
+        dashboard_limit = data.get("dashboardLimit", 5)
+        if not isinstance(dashboard_limit, int) or dashboard_limit <= 0:
+            click.echo(
+                f"Warning: dashboardLimit must be a positive integer (got {dashboard_limit!r}) — defaulting to 10.",
+                err=True,
+            )
+            dashboard_limit = 10
+
         return cls(
             vault=data.get("vault", ""),
             editor=data.get("editor", ""),
             no_open=data.get("noOpen", False),
-            stale_days=data.get("staleDays", 30),
-            dashboard_limit=data.get("dashboardLimit", 5),
+            stale_days=stale_days,
+            dashboard_limit=dashboard_limit,
             templates=data.get("templates", ""),
             queries=data.get("queries", ""),
             author=data.get("author", ""),
@@ -77,23 +95,26 @@ class Config:
 
     def resolve_author(self) -> str:
         """Return configured author, falling back to OS username."""
-        return self.author or os.getlogin()
+        return (
+            self.author
+            or os.environ.get("USER")
+            or os.environ.get("USERNAME", "unknown")
+        )
 
     def resolve_hostname(self) -> str:
         """Return configured hostname, falling back to system hostname."""
         return self.hostname or socket.gethostname()
 
     def require_vault(self) -> Path:
-        """Return vault path or raise with a friendly message."""
-        p = self.vault_path
-        if p is None:
-            raise click_error(
-                "No vault configured. Run [bold]jot config init[/bold] to set one up."
+        """Return vault path or raise a UsageError with a friendly message."""
+        if not self.vault:
+            raise click.UsageError(
+                "No vault configured. Run 'jot config init' to set one up."
+            )
+        p = Path(self.vault).expanduser()
+        if not p.is_dir():
+            raise click.UsageError(
+                f"Vault path {str(p)!r} does not exist or is not a directory. "
+                "Run 'jot config init' to reconfigure."
             )
         return p
-
-
-def click_error(msg: str) -> SystemExit:
-    """Import click lazily to avoid circular import in config module."""
-    import click
-    raise click.ClickException(msg)
