@@ -44,7 +44,7 @@ def cmd_rename(old_title: str, new_title: str, dry_run: bool) -> None:
 
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     note = vault.resolve(old_title)
     if not note:
@@ -95,7 +95,7 @@ def cmd_merge(source_title: str, target_title: str, dry_run: bool) -> None:
     """Merge SOURCE into TARGET (appends content, redirects links, deletes source)."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     src = vault.resolve(source_title)
     if not src:
@@ -117,21 +117,31 @@ def cmd_merge(source_title: str, target_title: str, dry_run: bool) -> None:
         console.print("\n[yellow]Dry run — no changes made.[/yellow]")
         return
 
-    # Append source body to target
-    with tgt.path.open("a", encoding="utf-8") as f:
-        f.write(f"\n\n---\n\n*Merged from [[{src.title}]]:*\n\n{src.body}")
+    snapshot: dict = {
+        tgt.path: tgt.path.read_text(encoding="utf-8"),
+        **{link_src.path: link_src.path.read_text(encoding="utf-8") for link_src in bl},
+    }
+    try:
+        # Append source body to target
+        with tgt.path.open("a", encoding="utf-8") as f:
+            f.write(f"\n\n---\n\n*Merged from [[{src.title}]]:*\n\n{src.body}")
 
-    # Redirect all backlinks pointing to source → target
-    for link_src in bl:
-        text = link_src.path.read_text(encoding="utf-8")
-        pattern = re.compile(
-            r"\[\[" + re.escape(source_title) + r"(\|[^\]]+)?\]\]",
-            re.IGNORECASE,
-        )
-        text = pattern.sub(lambda m: f"[[{tgt.title}{m.group(1) or ''}]]", text)
-        link_src.path.write_text(text, encoding="utf-8")
+        # Redirect all backlinks pointing to source → target
+        for link_src in bl:
+            text = link_src.path.read_text(encoding="utf-8")
+            pattern = re.compile(
+                r"\[\[" + re.escape(source_title) + r"(\|[^\]]+)?\]\]",
+                re.IGNORECASE,
+            )
+            text = pattern.sub(lambda m: f"[[{tgt.title}{m.group(1) or ''}]]", text)
+            link_src.path.write_text(text, encoding="utf-8")
 
-    src.path.unlink()
+        src.path.unlink()
+    except Exception as exc:
+        for path, original in snapshot.items():
+            path.write_text(original, encoding="utf-8")
+        raise click.ClickException("Operation failed — all changes have been rolled back.") from exc
+
     console.print(f"\n[green]Merged[/green] and deleted {src.path.relative_to(root)}")
 
 
@@ -143,7 +153,7 @@ def cmd_split(title: str, heading: str, dry_run: bool) -> None:
     """Split a section (by heading text) out of a note into a new note."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     note = vault.resolve(title)
     if not note:
@@ -211,7 +221,7 @@ def cmd_dedupe(dry_run: bool) -> None:
     """Find and report notes with duplicate titles or stems."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     # Group by normalized title
     by_title: dict[str, list] = {}
@@ -240,7 +250,7 @@ def cmd_related(title: str, limit: int) -> None:
     """Show notes most related to a given note (shared tags + common links)."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     note = vault.resolve(title)
     if not note:

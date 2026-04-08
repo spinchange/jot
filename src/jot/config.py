@@ -26,6 +26,7 @@ class Config:
     queries: str = ""
     author: str = ""
     hostname: str = ""
+    ignore_folders: list[str] = field(default_factory=list)
 
     # ------------------------------------------------------------------ #
     # Load / save
@@ -65,6 +66,7 @@ class Config:
             queries=data.get("queries", ""),
             author=data.get("author", ""),
             hostname=data.get("hostname", ""),
+            ignore_folders=data.get("ignoreFolders", []),
         )
 
     def save(self) -> None:
@@ -79,6 +81,7 @@ class Config:
             "queries": self.queries,
             "author": self.author,
             "hostname": self.hostname,
+            "ignoreFolders": self.ignore_folders,
         }
         CONFIG_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
 

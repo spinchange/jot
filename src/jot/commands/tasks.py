@@ -23,7 +23,7 @@ def cmd_tasks(title: str | None, open_only: bool, done_only: bool) -> None:
     """List GFM checkbox tasks from a note or the entire vault."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     if title:
         note = vault.resolve(title)
@@ -65,7 +65,7 @@ def cmd_agenda(days: int) -> None:
     """Show notes with due or scheduled dates in the upcoming window."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     today = date.today()
     horizon = date.fromordinal(today.toordinal() + days)

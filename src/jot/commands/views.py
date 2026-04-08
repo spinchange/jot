@@ -22,7 +22,7 @@ def cmd_dashboard() -> None:
     """Show a summary dashboard of the vault."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     stats = vault.stats()
     limit = cfg.dashboard_limit
@@ -81,7 +81,7 @@ def cmd_report(since: str | None, until: str | None) -> None:
     """Show notes modified in a date range."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     today = date.today()
     start = date.fromisoformat(since) if since else today - timedelta(days=30)
@@ -114,7 +114,7 @@ def cmd_review() -> None:
     """Show notes that are drafts or have no tags (worth reviewing)."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     candidates = []
     for note in vault.all_notes():

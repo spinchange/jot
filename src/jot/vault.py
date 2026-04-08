@@ -24,14 +24,16 @@ class Vault:
         self._by_stem: dict[str, list[Note]] = defaultdict(list)
         self._by_title: dict[str, list[Note]] = defaultdict(list)
         self._by_alias: dict[str, list[Note]] = defaultdict(list)
+        self._ignored: frozenset[str] = RESERVED_FOLDERS
 
     # ------------------------------------------------------------------ #
     # Loading
     # ------------------------------------------------------------------ #
 
     @classmethod
-    def load(cls, root: Path) -> "Vault":
+    def load(cls, root: Path, ignore: set[str] | None = None) -> "Vault":
         v = cls(root)
+        v._ignored = RESERVED_FOLDERS | frozenset(s.lower() for s in (ignore or set()))
         v.reload()
         return v
 
@@ -174,7 +176,7 @@ class Vault:
         results = []
         for note in self._notes:
             parts = note.path.relative_to(self.root).parts
-            if parts[0].lower() in RESERVED_FOLDERS:
+            if parts[0].lower() in self._ignored:
                 continue
             mtime = date.fromtimestamp(note.path.stat().st_mtime)
             if mtime < cutoff:

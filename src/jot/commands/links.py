@@ -22,7 +22,7 @@ def cmd_links(title: str) -> None:
     """List all outbound wikilinks from a note."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     note = vault.resolve(title)
     if not note:
@@ -48,7 +48,7 @@ def cmd_backlinks(title: str) -> None:
     """List all notes that link to a given note."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     note = vault.resolve(title)
     if not note:
@@ -70,7 +70,7 @@ def cmd_unresolved() -> None:
     """List all unresolved wikilinks in the vault."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     pairs = vault.unresolved_links()
     if not pairs:
@@ -96,7 +96,7 @@ def cmd_repair_links(old_name: str, new_name: str, dry_run: bool) -> None:
     """Replace all wikilinks from OLD_NAME to NEW_NAME across the vault."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     old_lower = old_name.lower()
     pattern = re.compile(
@@ -104,15 +104,24 @@ def cmd_repair_links(old_name: str, new_name: str, dry_run: bool) -> None:
         re.IGNORECASE,
     )
 
-    updated = 0
+    to_update = []
     for note in vault.all_notes():
         text = note.path.read_text(encoding="utf-8")
         new_text = pattern.sub(lambda m: f"[[{new_name}{m.group(1) or ''}]]", text)
         if new_text != text:
             console.print(f"  [cyan]{note.path.relative_to(root)}[/cyan]")
-            if not dry_run:
-                note.path.write_text(new_text, encoding="utf-8")
-            updated += 1
+            to_update.append((note.path, text, new_text))
+
+    updated = len(to_update)
+    if not dry_run and to_update:
+        snapshot = {path: original for path, original, _ in to_update}
+        try:
+            for path, _, new_text in to_update:
+                path.write_text(new_text, encoding="utf-8")
+        except Exception as exc:
+            for path, original in snapshot.items():
+                path.write_text(original, encoding="utf-8")
+            raise click.ClickException("Operation failed — all changes have been rolled back.") from exc
 
     if updated == 0:
         console.print(f"[dim]No links to [[{old_name}]] found.[/dim]")
@@ -128,7 +137,7 @@ def cmd_create_unresolved(dry_run: bool) -> None:
     """Create stub notes for every unresolved wikilink."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     from datetime import date
 
@@ -163,7 +172,7 @@ def cmd_graph(fmt: str) -> None:
     """Output a link graph in Mermaid format."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     lines = ["graph TD"]
     for note in vault.all_notes():
@@ -188,7 +197,7 @@ def cmd_orphans() -> None:
     """List notes with no inbound or outbound links."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     orph = vault.orphans()
     if not orph:

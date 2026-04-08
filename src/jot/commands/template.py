@@ -78,7 +78,7 @@ def template_apply(template_name: str, note_title: str, no_open: bool) -> None:
         "stem": stem,
     })
 
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
     existing = vault.resolve(note_title)
     if existing:
         console.print(f"[yellow]Already exists:[/yellow] {existing.path.relative_to(root)}")
@@ -148,7 +148,7 @@ def query_run(name: str) -> None:
 
     q = queries[name]
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     notes = vault.all_notes()
 

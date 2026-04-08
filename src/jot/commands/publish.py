@@ -30,7 +30,7 @@ def cmd_publish(output: str, clean: bool, dry_run: bool) -> None:
     """
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     out_dir = Path(output).expanduser().resolve()
 

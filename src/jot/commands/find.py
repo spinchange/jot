@@ -25,7 +25,7 @@ def cmd_list(tag: str | None, folder: str | None, status: str | None) -> None:
     """List notes in the vault."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     notes = vault.all_notes()
 
@@ -65,7 +65,7 @@ def cmd_search(query: str, case_sensitive: bool) -> None:
     """Full-text search across all notes."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     results = vault.search(query, case_sensitive=case_sensitive)
     results = sorted(results, key=lambda n: n.title)
@@ -111,7 +111,7 @@ def cmd_recent(n: int) -> None:
     """Show the N most recently modified notes."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     notes = vault.recent(n)
 
@@ -138,7 +138,7 @@ def cmd_stale(days: int | None) -> None:
     """List notes not modified recently."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     threshold = days if days is not None else cfg.stale_days
     notes = vault.stale(threshold)
@@ -167,7 +167,7 @@ def cmd_preview(title: str) -> None:
     """Print a note's content to the terminal."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     note = vault.resolve(title)
     if not note:
@@ -190,7 +190,7 @@ def cmd_pick(query: str) -> None:
     """Fuzzy-pick a note and print its path (pipe-friendly)."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     notes = vault.all_notes()
     if query:

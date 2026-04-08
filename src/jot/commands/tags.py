@@ -21,7 +21,7 @@ def cmd_tags(title: str | None, show_all: bool) -> None:
     """Show tags for a note, or list all tags vault-wide."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     if show_all or not title:
         # Vault-wide tag index
@@ -75,7 +75,7 @@ def props_show(title: str) -> None:
     """Show all frontmatter fields for a note."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     note = vault.resolve(title)
     if not note:
@@ -103,7 +103,7 @@ def props_set(title: str, key: str, value: str) -> None:
     """Set a frontmatter field on a note."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     note = vault.resolve(title)
     if not note:
@@ -130,7 +130,7 @@ def props_unset(title: str, key: str) -> None:
     """Remove a frontmatter field from a note."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     note = vault.resolve(title)
     if not note:
@@ -151,7 +151,7 @@ def props_add(title: str, key: str, value: str) -> None:
     """Append a value to a list frontmatter field (creates list if needed)."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     note = vault.resolve(title)
     if not note:
@@ -177,7 +177,7 @@ def props_remove(title: str, key: str, value: str) -> None:
     """Remove a value from a list frontmatter field."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     note = vault.resolve(title)
     if not note:

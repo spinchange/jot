@@ -139,7 +139,7 @@ def cmd_new(title: str, no_open: bool) -> None:
     """Create a new note."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     existing = vault.resolve(title)
     if existing:
@@ -162,7 +162,7 @@ def cmd_open(title: str) -> None:
     """Open an existing note (or create it if absent)."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     note = vault.resolve(title)
     if note:
@@ -183,7 +183,7 @@ def cmd_daily(date_str: str | None, no_open: bool) -> None:
     """Open today's daily note (or a specific date: YYYY-MM-DD)."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     if date_str:
         try:
@@ -226,7 +226,7 @@ def cmd_weekly(date_str: str | None, no_open: bool) -> None:
     """Open this week's weekly note (or a specific date: YYYY-MM-DD)."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     if date_str:
         try:
@@ -272,7 +272,7 @@ def cmd_monthly(date_str: str | None, no_open: bool) -> None:
     """Open this month's monthly note (or a specific date: YYYY-MM-DD)."""
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     if date_str:
         try:

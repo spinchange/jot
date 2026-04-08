@@ -25,7 +25,7 @@ def cmd_capture(text: tuple[str, ...], use_daily: bool, use_inbox: bool) -> None
     """
     cfg = Config.load()
     root = cfg.require_vault()
-    vault = Vault.load(root)
+    vault = Vault.load(root, ignore=set(cfg.ignore_folders))
 
     if text:
         content = " ".join(text)
