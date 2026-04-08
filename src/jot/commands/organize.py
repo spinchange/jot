@@ -14,6 +14,18 @@ from jot.vault import Vault
 console = Console()
 
 
+def _replace_resolved_wikilinks(text: str, vault: Vault, target_note, new_name: str) -> str:
+    pattern = re.compile(r"\[\[([^\]|#\n]+?)(\|[^\]\n]+)?\]\]")
+
+    def replace(match: re.Match[str]) -> str:
+        link_target = match.group(1).strip()
+        if not vault.resolves_to(link_target, target_note):
+            return match.group(0)
+        return f"[[{new_name}{match.group(2) or ''}]]"
+
+    return pattern.sub(replace, text)
+
+
 @click.command("rename")
 @click.argument("old_title")
 @click.argument("new_title")
@@ -53,18 +65,14 @@ def cmd_rename(old_title: str, new_title: str, dry_run: bool) -> None:
         note._data["title"] = new_title
         note.save()
     note.path.rename(new_path)
+    note.path = new_path
 
-    # Update all backlinks
-    old_keys = {old_title, note.stem}
+    # Update every inbound link that previously resolved to this note.
     for src in bl:
         text = src.path.read_text(encoding="utf-8")
-        for old_key in old_keys:
-            pattern = re.compile(
-                r"\[\[" + re.escape(old_key) + r"(\|[^\]]+)?\]\]",
-                re.IGNORECASE,
-            )
-            text = pattern.sub(lambda m: f"[[{new_title}{m.group(1) or ''}]]", text)
-        src.path.write_text(text, encoding="utf-8")
+        new_text = _replace_resolved_wikilinks(text, vault, note, new_title)
+        if new_text != text:
+            src.path.write_text(new_text, encoding="utf-8")
 
     console.print(f"\n[green]Renamed[/green] and updated {len(bl)} backlink(s).")
 

@@ -301,6 +301,25 @@ class TestRenameRepairLinks:
         content = new_path.read_text(encoding="utf-8")
         assert "title:" not in content
 
+    def test_rename_updates_links_that_resolved_by_alias_and_stem(self, runner, cli_cfg, vault_root):
+        (vault_root / "target-file.md").write_text(
+            "---\ntitle: Canonical Title\naliases:\n  - Alias Name\n---\n\nBody.",
+            encoding="utf-8",
+        )
+        (vault_root / "source.md").write_text(
+            "Links: [[Alias Name]], [[target-file]], [[Canonical Title|shown]].",
+            encoding="utf-8",
+        )
+
+        result = runner.invoke(cli, ["rename", "Canonical Title", "Renamed Title"])
+        assert result.exit_code == 0
+
+        content = (vault_root / "source.md").read_text(encoding="utf-8")
+        assert "[[Renamed Title]]" in content
+        assert "[[Renamed Title|shown]]" in content
+        assert "Alias Name" not in content
+        assert "[[target-file]]" not in content
+
 
 class TestGraphOrphans:
     def test_graph_output(self, runner, cli_cfg):

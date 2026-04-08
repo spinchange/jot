@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -76,6 +77,34 @@ class TestResolve:
     def test_resolve_missing_returns_none(self, vault):
         assert vault.resolve("does-not-exist") is None
 
+    def test_resolve_prefers_title_over_alias_and_stem(self, vault_root):
+        (vault_root / "title-note.md").write_text(
+            "---\ntitle: Shared Name\n---\n\nBody.", encoding="utf-8"
+        )
+        (vault_root / "stem-note.md").write_text(
+            "---\naliases:\n  - Shared Name\n---\n\nBody.", encoding="utf-8"
+        )
+        (vault_root / "shared-name.md").write_text("Body.", encoding="utf-8")
+
+        vault = Vault.load(vault_root)
+        note = vault.resolve("Shared Name")
+        assert note is not None
+        assert note.stem == "title-note"
+
+    def test_resolve_conflict_uses_most_recently_modified_note(self, vault_root):
+        older = vault_root / "older.md"
+        newer = vault_root / "newer.md"
+        older.write_text("---\ntitle: Clash\n---\n\nOld.", encoding="utf-8")
+        newer.write_text("---\ntitle: Clash\n---\n\nNew.", encoding="utf-8")
+
+        os.utime(older, (1_700_000_000, 1_700_000_000))
+        os.utime(newer, (1_800_000_000, 1_800_000_000))
+
+        vault = Vault.load(vault_root)
+        note = vault.resolve("Clash")
+        assert note is not None
+        assert note.stem == "newer"
+
 
 class TestSearch:
     def test_search_finds_in_body(self, vault):
@@ -122,6 +151,21 @@ class TestBacklinks:
         alpha = vault.resolve("alpha")
         bl = vault.backlinks(alpha)
         assert alpha not in bl
+
+    def test_backlinks_follow_resolution_rules(self, vault_root):
+        (vault_root / "target-file.md").write_text(
+            "---\ntitle: Target Title\naliases:\n  - Target Alias\n---\n\nBody.",
+            encoding="utf-8",
+        )
+        (vault_root / "source.md").write_text(
+            "Via title [[Target Title]], alias [[Target Alias]], and stem [[target-file]].",
+            encoding="utf-8",
+        )
+
+        vault = Vault.load(vault_root)
+        target = vault.resolve("Target Title")
+        bl = vault.backlinks(target)
+        assert {n.stem for n in bl} == {"source"}
 
 
 class TestUnresolved:
