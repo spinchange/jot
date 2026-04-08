@@ -23,7 +23,8 @@ from jot.commands.tags import cmd_tags, props_group
 from jot.commands.organize import cmd_rename, cmd_merge, cmd_split, cmd_dedupe, cmd_related
 from jot.commands.tasks import cmd_tasks, cmd_agenda
 from jot.commands.views import cmd_dashboard, cmd_report, cmd_review
-from jot.commands.template import template_group, query_group
+from jot.commands.template import template_group
+from jot.commands.query import query_group
 from jot.commands.config_cmd import config_group
 from jot.commands.publish import cmd_publish
 
