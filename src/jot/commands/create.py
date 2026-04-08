@@ -16,6 +16,66 @@ from jot.note import Note
 
 console = Console()
 
+_DAILY_TEMPLATE = (
+    "---\n"
+    "title: {heading}\n"
+    "tags:\n"
+    "  - daily\n"
+    "author: {author}\n"
+    "hostname: {hostname}\n"
+    "date: {date}\n"
+    "status: draft\n"
+    "status_log:\n"
+    "  - {status_entry}\n"
+    "---\n"
+    "\n"
+    "# {heading}\n"
+    "\n"
+    "## Notes\n"
+    "\n"
+    "## Tasks\n"
+)
+
+_WEEKLY_TEMPLATE = (
+    "---\n"
+    "title: {heading}\n"
+    "tags:\n"
+    "  - weekly\n"
+    "author: {author}\n"
+    "hostname: {hostname}\n"
+    "date: {date}\n"
+    "status: draft\n"
+    "status_log:\n"
+    "  - {status_entry}\n"
+    "---\n"
+    "\n"
+    "# {heading}\n"
+    "\n"
+    "## Goals\n"
+    "\n"
+    "## Review\n"
+)
+
+_MONTHLY_TEMPLATE = (
+    "---\n"
+    "title: {heading}\n"
+    "tags:\n"
+    "  - monthly\n"
+    "author: {author}\n"
+    "hostname: {hostname}\n"
+    "date: {date}\n"
+    "status: draft\n"
+    "status_log:\n"
+    "  - {status_entry}\n"
+    "---\n"
+    "\n"
+    "# {heading}\n"
+    "\n"
+    "## Goals\n"
+    "\n"
+    "## Review\n"
+)
+
 
 def _open_in_editor(path: Path, cfg: Config) -> None:
     if cfg.no_open:
@@ -142,7 +202,13 @@ def cmd_daily(date_str: str | None, no_open: bool) -> None:
         hostname = cfg.resolve_hostname()
         status_entry = f"draft · {ts} · {hostname} · {author}"
         path.write_text(
-            f"---\ntitle: {heading}\ntags:\n  - daily\nauthor: {author}\nhostname: {hostname}\ndate: {d.isoformat()}\nstatus: draft\nstatus_log:\n  - {status_entry}\n---\n\n# {heading}\n\n## Notes\n\n## Tasks\n",
+            _DAILY_TEMPLATE.format(
+                heading=heading,
+                author=author,
+                hostname=hostname,
+                date=d.isoformat(),
+                status_entry=status_entry,
+            ),
             encoding="utf-8",
         )
         console.print(f"[green]Created[/green] {path.relative_to(root)}")
@@ -182,7 +248,13 @@ def cmd_weekly(date_str: str | None, no_open: bool) -> None:
         status_entry = f"draft · {ts} · {hostname} · {author}"
         heading = f"Week {week_label}"
         path.write_text(
-            f"---\ntitle: {heading}\ntags:\n  - weekly\nauthor: {author}\nhostname: {hostname}\ndate: {d.isoformat()}\nstatus: draft\nstatus_log:\n  - {status_entry}\n---\n\n# {heading}\n\n## Goals\n\n## Review\n",
+            _WEEKLY_TEMPLATE.format(
+                heading=heading,
+                author=author,
+                hostname=hostname,
+                date=d.isoformat(),
+                status_entry=status_entry,
+            ),
             encoding="utf-8",
         )
         console.print(f"[green]Created[/green] {path.relative_to(root)}")
@@ -220,7 +292,13 @@ def cmd_monthly(date_str: str | None, no_open: bool) -> None:
         hostname = cfg.resolve_hostname()
         status_entry = f"draft · {ts} · {hostname} · {author}"
         path.write_text(
-            f"---\ntitle: {month_label}\ntags:\n  - monthly\nauthor: {author}\nhostname: {hostname}\ndate: {d.isoformat()}\nstatus: draft\nstatus_log:\n  - {status_entry}\n---\n\n# {month_label}\n\n## Goals\n\n## Review\n",
+            _MONTHLY_TEMPLATE.format(
+                heading=month_label,
+                author=author,
+                hostname=hostname,
+                date=d.isoformat(),
+                status_entry=status_entry,
+            ),
             encoding="utf-8",
         )
         console.print(f"[green]Created[/green] {path.relative_to(root)}")

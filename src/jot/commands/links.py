@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import click
@@ -97,7 +98,6 @@ def cmd_repair_links(old_name: str, new_name: str, dry_run: bool) -> None:
     root = cfg.require_vault()
     vault = Vault.load(root)
 
-    import re
     old_lower = old_name.lower()
     pattern = re.compile(
         r"\[\[" + re.escape(old_name) + r"(\|[^\]]+)?\]\]",
@@ -181,9 +181,6 @@ def cmd_graph(fmt: str) -> None:
 
 def _node_id(stem: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_]", "_", stem)
-
-
-import re  # noqa: E402 (needed by _node_id, placed after for readability)
 
 
 @click.command("orphans")

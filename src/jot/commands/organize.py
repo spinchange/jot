@@ -32,6 +32,16 @@ def _replace_resolved_wikilinks(text: str, vault: Vault, target_note, new_name: 
 @click.option("--dry-run", is_flag=True)
 def cmd_rename(old_title: str, new_title: str, dry_run: bool) -> None:
     """Rename a note and update all inbound wikilinks."""
+    # Validate new_title against characters illegal in Windows filenames.
+    illegal_chars = set('<>:"/\\|?*') | {chr(c) for c in range(0x00, 0x20)}
+    found = sorted({ch for ch in new_title if ch in illegal_chars}, key=ord)
+    if found:
+        readable = ", ".join(repr(ch) for ch in found)
+        raise click.UsageError(
+            f"Title contains characters not allowed in note filenames: {readable}. "
+            "Remove < > : \" / \\ | ? * and ASCII control characters (0x00–0x1f)."
+        )
+
     cfg = Config.load()
     root = cfg.require_vault()
     vault = Vault.load(root)
