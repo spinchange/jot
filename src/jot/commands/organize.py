@@ -10,6 +10,7 @@ from rich.console import Console
 
 from jot.config import Config
 from jot.vault import Vault
+from jot.git_util import git_commit
 
 console = Console()
 
@@ -30,7 +31,8 @@ def _replace_resolved_wikilinks(text: str, vault: Vault, target_note, new_name: 
 @click.argument("old_title")
 @click.argument("new_title")
 @click.option("--dry-run", is_flag=True)
-def cmd_rename(old_title: str, new_title: str, dry_run: bool) -> None:
+@click.option("--no-git", is_flag=True, help="Skip auto git commit after rename.")
+def cmd_rename(old_title: str, new_title: str, dry_run: bool, no_git: bool) -> None:
     """Rename a note and update all inbound wikilinks."""
     # Validate new_title against characters illegal in Windows filenames.
     illegal_chars = set('<>:"/\\|?*') | {chr(c) for c in range(0x00, 0x20)}
@@ -86,12 +88,16 @@ def cmd_rename(old_title: str, new_title: str, dry_run: bool) -> None:
 
     console.print(f"\n[green]Renamed[/green] and updated {len(bl)} backlink(s).")
 
+    if not no_git:
+        git_commit(root, f"jot rename: {old_title} → {new_title}")
+
 
 @click.command("merge")
 @click.argument("source_title")
 @click.argument("target_title")
 @click.option("--dry-run", is_flag=True)
-def cmd_merge(source_title: str, target_title: str, dry_run: bool) -> None:
+@click.option("--no-git", is_flag=True, help="Skip auto git commit after merge.")
+def cmd_merge(source_title: str, target_title: str, dry_run: bool, no_git: bool) -> None:
     """Merge SOURCE into TARGET (appends content, redirects links, deletes source)."""
     cfg = Config.load()
     root = cfg.require_vault()
@@ -144,12 +150,16 @@ def cmd_merge(source_title: str, target_title: str, dry_run: bool) -> None:
 
     console.print(f"\n[green]Merged[/green] and deleted {src.path.relative_to(root)}")
 
+    if not no_git:
+        git_commit(root, f"jot merge: {source_title} → {target_title}")
+
 
 @click.command("split")
 @click.argument("title")
 @click.argument("heading")
 @click.option("--dry-run", is_flag=True)
-def cmd_split(title: str, heading: str, dry_run: bool) -> None:
+@click.option("--no-git", is_flag=True, help="Skip auto git commit after split.")
+def cmd_split(title: str, heading: str, dry_run: bool, no_git: bool) -> None:
     """Split a section (by heading text) out of a note into a new note."""
     cfg = Config.load()
     root = cfg.require_vault()
@@ -213,6 +223,9 @@ def cmd_split(title: str, heading: str, dry_run: bool) -> None:
     note.save()
 
     console.print(f"\n[green]Split complete.[/green] Link added to original.")
+
+    if not no_git:
+        git_commit(root, f"jot split: {heading!r} out of {title!r}")
 
 
 @click.command("dedupe")
