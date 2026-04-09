@@ -52,7 +52,7 @@ class TestTopLevel:
     def test_version(self, runner):
         result = runner.invoke(cli, ["--version"])
         assert result.exit_code == 0
-        assert "0.1.0" in result.output
+        assert "0.4.0" in result.output
 
     def test_unknown_command(self, runner):
         result = runner.invoke(cli, ["notacommand"])
@@ -339,3 +339,74 @@ class TestAgenda:
         assert result.exit_code == 0
         # gamma has due: 2099-12-31 — should appear with 100-year window
         assert "gamma" in result.output.lower() or "Gamma" in result.output
+
+
+class TestVaultOverride:
+    """--vault PATH overrides the configured vault for a single invocation."""
+
+    @pytest.fixture()
+    def two_vaults(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        """Two distinct vaults and a config pointing at vault_a.
+        Resets _vault_override after each test so state doesn't leak.
+        """
+        vault_a = tmp_path / "vault_a"
+        vault_b = tmp_path / "vault_b"
+        vault_a.mkdir()
+        vault_b.mkdir()
+
+        (vault_a / "apple.md").write_text("---\ntitle: Apple\n---\nIn vault A.\n", encoding="utf-8")
+        (vault_b / "banana.md").write_text("---\ntitle: Banana\n---\nIn vault B.\n", encoding="utf-8")
+
+        vault_a_str = str(vault_a)
+
+        # Return a fresh Config object each call so Config.load() mutations don't bleed across invocations.
+        monkeypatch.setattr(
+            "jot.config.Config._load_file",
+            classmethod(lambda cls: Config(vault=vault_a_str, editor="", no_open=True)),
+        )
+        # Also reset _vault_override so previous tests don't bleed in.
+        monkeypatch.setattr("jot.config._vault_override", None)
+
+        return vault_a, vault_b
+
+    def test_without_flag_uses_configured_vault(self, runner, two_vaults):
+        vault_a, _ = two_vaults
+        result = runner.invoke(cli, ["list", "--format", "plain"])
+        assert result.exit_code == 0
+        assert "apple" in result.output
+        assert "banana" not in result.output
+
+    def test_flag_overrides_to_other_vault(self, runner, two_vaults):
+        _, vault_b = two_vaults
+        result = runner.invoke(cli, ["--vault", str(vault_b), "list", "--format", "plain"])
+        assert result.exit_code == 0
+        assert "banana" in result.output
+        assert "apple" not in result.output
+
+    def test_flag_works_with_search(self, runner, two_vaults):
+        _, vault_b = two_vaults
+        result = runner.invoke(cli, ["--vault", str(vault_b), "search", "vault B"])
+        assert result.exit_code == 0
+        assert "banana" in result.output.lower() or "Banana" in result.output
+
+    def test_flag_works_with_recent(self, runner, two_vaults):
+        _, vault_b = two_vaults
+        result = runner.invoke(cli, ["--vault", str(vault_b), "recent"])
+        assert result.exit_code == 0
+        assert "banana" in result.output.lower() or "Banana" in result.output
+
+    def test_nonexistent_path_errors_cleanly(self, runner, two_vaults):
+        result = runner.invoke(cli, ["--vault", "/no/such/path", "list"])
+        assert result.exit_code != 0
+        assert "not exist" in result.output.lower() or "not a directory" in result.output.lower() \
+               or "error" in result.output.lower()
+
+    def test_override_does_not_persist_across_invocations(self, runner, two_vaults):
+        vault_a, vault_b = two_vaults
+        # First call with --vault vault_b
+        runner.invoke(cli, ["--vault", str(vault_b), "list", "--format", "plain"])
+        # Second call without flag — should be back to vault_a
+        result = runner.invoke(cli, ["list", "--format", "plain"])
+        assert result.exit_code == 0
+        assert "apple" in result.output
+        assert "banana" not in result.output

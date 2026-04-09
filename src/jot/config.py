@@ -14,6 +14,9 @@ import click
 CONFIG_DIR = Path.home() / ".jot"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
+# Set by the --vault CLI flag to override the configured vault for one invocation.
+_vault_override: str | None = None
+
 
 @dataclass
 class Config:
@@ -34,6 +37,16 @@ class Config:
 
     @classmethod
     def load(cls) -> "Config":
+        if not CONFIG_FILE.exists():
+            cfg = cls()
+        else:
+            cfg = cls._load_file()
+        if _vault_override is not None:
+            cfg.vault = _vault_override
+        return cfg
+
+    @classmethod
+    def _load_file(cls) -> "Config":
         if not CONFIG_FILE.exists():
             return cls()
         try:

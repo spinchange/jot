@@ -38,10 +38,18 @@ def cmd_mcp() -> None:
 
 @click.group()
 @click.version_option(package_name="jot")
-def cli() -> None:
+@click.option(
+    "--vault",
+    default=None,
+    metavar="PATH",
+    help="Override the configured vault path for this invocation.",
+)
+def cli(vault: str | None) -> None:
     """jot — plain markdown notes, wikilinks, publish.\n
     Vault config: jot config init
     """
+    import jot.config as _cfg
+    _cfg._vault_override = vault  # None resets any prior override; path sets it
 
 
 # Creating and opening
