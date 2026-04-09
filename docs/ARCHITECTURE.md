@@ -16,6 +16,8 @@ jot/
 │       ├── vault.py             # Vault class — vault indexing and wikilink resolution
 │       ├── note.py              # Note class — represents a single .md file
 │       ├── frontmatter.py       # YAML parsing and writing utilities
+│       ├── git_util.py          # Git auto-commit helpers for rename/merge/split
+│       ├── mcp_server.py        # FastMCP server exposing vault ops to AI models
 │       └── commands/            # Individual CLI command modules
 │           ├── __init__.py
 │           ├── create.py        # new, open, daily, weekly, monthly

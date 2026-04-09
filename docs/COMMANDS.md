@@ -21,12 +21,18 @@ This document provides a full list of commands available in `jot`.
   - `--tag, -t [TAG]`: Filter by tag.
   - `--folder, -f [FOLDER]`: Filter by subfolder.
   - `--status, -s [STATUS]`: Filter by frontmatter status.
+  - `--format [rich|plain|json]`: Output format (default: `rich`).
 - `jot search [QUERY]`: Full-text search across all notes.
+  - `--format [rich|plain|json]`: Output format.
 - `jot find [PATTERN]`: Find notes by filename glob pattern.
 - `jot recent [N]`: Show the N most recently modified notes (default: 10).
+  - `--format [rich|plain|json]`: Output format.
 - `jot stale`: List notes not modified recently.
+  - `--format [rich|plain|json]`: Output format.
 - `jot preview [TITLE]`: Print a note's content to the terminal with syntax highlighting.
 - `jot pick [QUERY]`: Fuzzy-pick a note and print its path (useful for piping).
+
+`plain` format emits one vault-relative filepath per line (xargs-safe). `json` emits a JSON array of `{path, title, tags, status}` objects.
 
 ## Capture
 
@@ -56,9 +62,12 @@ This document provides a full list of commands available in `jot`.
 
 ## Organization
 
-- `jot rename [OLD_TITLE] [NEW_TITLE]`: Rename a note and update all inbound wikilinks.
-- `jot merge [SOURCE_TITLE] [TARGET_TITLE]`: Merge source note into target note and update links.
-- `jot split [TITLE] [HEADING]`: Split a section out of a note into a new note.
+- `jot rename [OLD_TITLE] [NEW_TITLE]`: Rename a note and update all inbound wikilinks. Auto-commits to git.
+  - `--no-git`: Suppress auto-commit.
+- `jot merge [SOURCE_TITLE] [TARGET_TITLE]`: Merge source note into target note and update links. Auto-commits to git.
+  - `--no-git`: Suppress auto-commit.
+- `jot split [TITLE] [HEADING]`: Split a section out of a note into a new note. Auto-commits to git.
+  - `--no-git`: Suppress auto-commit.
 - `jot dedupe`: Find and report notes with duplicate titles or stems.
 - `jot related [TITLE]`: Show notes most related to a given note (shared tags + common links).
 
@@ -77,23 +86,68 @@ This document provides a full list of commands available in `jot`.
   - `--until [DATE]`
 - `jot review`: Show notes that are drafts, have no tags, or are empty.
 
-## Templates & Queries
+## Query
+
+Structured query DSL for filtering, sorting, and saving reusable queries.
+
+- `jot query run`: Run an ad-hoc query against the vault.
+  - `--tag [TAG]`: Filter by tag.
+  - `--status [STATUS]`: Filter by status.
+  - `--search [TEXT]`: Full-text filter.
+  - `--folder [FOLDER]`: Filter by subfolder.
+  - `--has-link [TARGET]`: Only notes that wikilink to TARGET.
+  - `--limit [N]`: Return at most N results.
+  - `--sort [title|date|path]`: Sort order.
+  - `--format [rich|plain|json]`: Output format.
+- `jot query save [NAME]`: Save current filter flags as a named query.
+- `jot query ls`: List all saved queries.
+- `jot query exec [NAME]`: Run a saved query by name.
+
+## Templates
 
 - `jot template list`: List available templates.
 - `jot template apply [TEMPLATE_NAME] [NOTE_TITLE]`: Create a note from a template.
 - `jot template show [TEMPLATE_NAME]`: Print a template's content.
-- `jot query list`: List saved queries.
-- `jot query run [NAME]`: Run a saved query by name.
-- `jot query save [NAME]`: Save a query for later reuse.
+
+## MCP Server
+
+- `jot mcp`: Start the MCP server for AI model vault access (requires `pip install jot[mcp]`).
+
+Starts a FastMCP stdio server exposing six vault tools to any MCP-compatible client (Claude Desktop, Claude Code, etc.):
+
+| Tool | Description |
+|---|---|
+| `vault_search(query)` | Full-text search; returns path, title, tags, status, snippet |
+| `vault_read(path)` | Read a note by vault-relative path; returns frontmatter + body |
+| `vault_write(path, body, frontmatter)` | Create or update a note |
+| `vault_list(tag, status, folder)` | Filtered note listing |
+| `vault_query(tag, status, search, folder, has_link, limit)` | Structured query |
+| `vault_backlinks(path)` | Notes that link to the given note |
 
 ## Configuration
 
 - `jot config show`: Print current configuration.
-- `jot config path`: Print the path to the config file.
+- `jot config path`: Print the path to the config file (`~/.jot/config.json`).
 - `jot config init`: Interactive first-run setup.
+
+### Config Keys
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `vault` | string (path) | _(required)_ | Absolute path to your notes directory |
+| `editor` | string | auto-detected | Editor command (`code`, `nvim`, etc.) |
+| `noOpen` | boolean | `false` | Suppress opening the editor after note creation |
+| `staleDays` | integer | `30` | Notes unmodified longer than this appear in `jot stale` |
+| `dashboardLimit` | integer | `5` | Max notes shown per section in `jot dashboard` |
+| `templates` | string (path) | _(optional)_ | Directory of Markdown templates for `jot template` |
+| `queries` | string (path) | _(optional)_ | Path to `queries.json` for saved queries |
+| `author` | string | `$USER` / `$USERNAME` | Default author written into new notes |
+| `hostname` | string | system hostname | Machine identifier written into new notes |
+| `ignoreFolders` | list of strings | `[]` | Subfolders excluded from vault indexing |
 
 ## Publish
 
-- `jot publish`: Transform wikilinks to relative links and write to an output directory.
+- `jot publish`: Transform wikilinks to relative markdown links and write to an output directory.
   - `--output, -o [DIR]`: Output directory (default: `./dist`).
   - `--clean`: Delete output directory before publishing.
+  - `--dry-run`: Preview what would be written without touching disk.

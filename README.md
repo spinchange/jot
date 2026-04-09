@@ -189,17 +189,24 @@ Starts an [MCP](https://modelcontextprotocol.io) server that exposes your vault 
 
 You can also run the server directly with the `jot-mcp` entry point installed by `pyproject.toml`.
 
-**Claude Desktop / Claude Code setup** — add to your MCP config:
+**Claude Desktop** — add to `%APPDATA%\Claude\claude_desktop_config.json` (Windows) or `~/Library/Application Support/Claude/claude_desktop_config.json` (Mac):
 ```json
 {
   "mcpServers": {
     "jot": {
-      "command": "jot",
-      "args": ["mcp"]
+      "command": "/path/to/python",
+      "args": ["-m", "jot.mcp_server"]
     }
   }
 }
 ```
+
+**Claude Code** — run once to register globally:
+```sh
+claude mcp add --scope user jot -- /path/to/python -m jot.mcp_server
+```
+
+Replace `/path/to/python` with the path to the Python interpreter where jot is installed.
 
 ### Config
 
@@ -336,3 +343,4 @@ Config lives at `~/.jot/config.json`. Run `jot config init` to create it interac
 | `queries` | string (path) | _(optional)_ | Path to `queries.json` for `jot query` saved queries |
 | `author` | string | `$USER` / `$USERNAME` | Default author written into new notes |
 | `hostname` | string | system hostname | Machine identifier written into new notes |
+| `ignoreFolders` | list of strings | `[]` | Subfolders excluded from vault indexing |
