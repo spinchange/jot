@@ -2,7 +2,7 @@
 
 Plain-text markdown notes with wikilinks, tags, tasks, and a one-command publish pipeline — all driven from your terminal.
 
-jot is the reference CLI for **YANP** (Yet Another Note Protocol) vaults: a plain-text knowledge protocol any tool can speak, including your terminal, your editor, and your AI.
+jot is the reference CLI for **YANP** (Yet Another Note Project) vaults: a plain-text knowledge protocol any tool can speak, including your terminal, your editor, and your AI.
 
 ---
 
