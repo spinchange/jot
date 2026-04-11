@@ -192,3 +192,21 @@ class TestStatusLog:
         n.save()
         n2 = Note.load(n.path)
         assert n2.status_log == ["active · 2026-03-29 14:32 · Nova · claude"]
+
+
+class TestTouch:
+    def test_touch_sets_modified_to_today(self, tmp_path):
+        n = write_note(tmp_path, "note.md", "---\ntitle: A\n---\n\nBody.")
+        n.touch()
+        assert n._data["modified"] == date.today().isoformat()
+
+    def test_touch_persists_on_disk(self, tmp_path):
+        n = write_note(tmp_path, "note.md", "---\ntitle: A\n---\n\nBody.")
+        n.touch()
+        n2 = Note.load(n.path)
+        assert n2._data.get("modified") == date.today().isoformat()
+
+    def test_touch_overwrites_old_modified(self, tmp_path):
+        n = write_note(tmp_path, "note.md", "---\ntitle: A\nmodified: 2020-01-01\n---\n\nBody.")
+        n.touch()
+        assert n._data["modified"] == date.today().isoformat()

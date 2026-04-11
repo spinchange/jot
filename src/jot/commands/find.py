@@ -236,6 +236,41 @@ def cmd_recent(n: int, fmt: FormatChoice) -> None:
     console.print(table)
 
 
+def _interactive_stale(notes: list, root: Path, cfg: "Config") -> None:
+    """Step through stale notes one by one, prompting for an action on each."""
+    from datetime import datetime
+    from jot.commands.create import _open_in_editor
+
+    total = len(notes)
+    for i, note in enumerate(notes, 1):
+        mtime = note.path.stat().st_mtime
+        dt = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d")
+        rel = str(note.path.relative_to(root))
+        console.print(
+            f"\n[bold]{i}/{total}[/bold]  [cyan]{rel}[/cyan]  [dim]last modified {dt}[/dim]"
+        )
+        raw = click.prompt(
+            "  (o)pen  (t)ouch  (d)elete  (s)kip  (q)uit",
+            default="s",
+        ).strip().lower()
+
+        if raw in ("o", "open"):
+            _open_in_editor(note.path, cfg)
+        elif raw in ("t", "touch"):
+            note.touch()
+            console.print("  [green]Touched.[/green] Modified date updated to today.")
+        elif raw in ("d", "delete"):
+            if click.confirm(f"  Delete {rel}?", default=False):
+                note.path.unlink()
+                console.print("  [red]Deleted.[/red]")
+        elif raw in ("q", "quit"):
+            console.print("[dim]Quit.[/dim]")
+            break
+        # else: skip
+    else:
+        console.print("\n[dim]All stale notes reviewed.[/dim]")
+
+
 @click.command("stale")
 @click.option("--days", default=None, type=int, help="Override stale threshold (days).")
 @click.option(
@@ -246,8 +281,19 @@ def cmd_recent(n: int, fmt: FormatChoice) -> None:
     show_default=True,
     help="Output format.",
 )
-def cmd_stale(days: int | None, fmt: FormatChoice) -> None:
+@click.option("--interactive", "-i", is_flag=True, help="Review stale notes one by one.")
+@click.option(
+    "--batch",
+    type=click.Choice(["touch", "delete"]),
+    default=None,
+    metavar="ACTION",
+    help="Batch action on all stale notes: touch (update modified dates) or delete (remove files).",
+)
+def cmd_stale(days: int | None, fmt: FormatChoice, interactive: bool, batch: str | None) -> None:
     """List notes not modified recently."""
+    if interactive and batch:
+        raise click.UsageError("--interactive and --batch are mutually exclusive.")
+
     cfg = Config.load()
     root = cfg.require_vault()
     vault = Vault.load(root, ignore=set(cfg.ignore_folders))
@@ -260,6 +306,25 @@ def cmd_stale(days: int | None, fmt: FormatChoice) -> None:
             console.print(f"[dim]No stale notes (threshold: {threshold} days).[/dim]")
         elif fmt == "json":
             click.echo("[]")
+        return
+
+    if batch == "touch":
+        for note in notes:
+            note.touch()
+        console.print(f"[green]Touched[/green] {len(notes)} note(s) — modified dates updated to today.")
+        return
+
+    if batch == "delete":
+        if click.confirm(f"Delete {len(notes)} stale note(s)?", default=False):
+            for note in notes:
+                note.path.unlink()
+            console.print(f"[red]Deleted[/red] {len(notes)} note(s).")
+        else:
+            console.print("[dim]Cancelled.[/dim]")
+        return
+
+    if interactive:
+        _interactive_stale(notes, root, cfg)
         return
 
     if fmt == "json":

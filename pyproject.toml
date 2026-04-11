@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jot"
-version = "0.4.0"
+version = "0.5.0"
 description = "YANP vault CLI — plain markdown notes, wikilinks, publish"
 requires-python = ">=3.10"
 dependencies = [
@@ -19,6 +19,7 @@ jot-mcp = "jot.mcp_server:main"
 
 [project.optional-dependencies]
 mcp = ["mcp>=1.0"]
+html = ["markdown>=3.0"]
 dev = ["pytest>=8.0"]
 
 [tool.setuptools.packages.find]

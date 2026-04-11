@@ -2,9 +2,9 @@
 
 This document tracks the current status, recent changes, and historical development log of the `jot` tool.
 
-## Current Build Status (v0.4.0)
+## Current Build Status (v0.5.0)
 
-`jot` is in a fully functional state with 164 passing tests. All core commands are implemented and tested. The MCP server exposes vault operations to AI models.
+`jot` is in a fully functional state with 189 passing tests. All core commands are implemented and tested. The MCP server exposes vault operations to AI models.
 
 ### Feature Coverage
 
@@ -22,11 +22,21 @@ This document tracks the current status, recent changes, and historical developm
 | **query** | Structured vault queries | `query run` `query save` `query ls` `query exec` |
 | **mcp** | AI model integration | `mcp` (FastMCP server over stdio) |
 | **config** | User settings | `config` (show/init/path) |
-| **publish** | Export to markdown | `publish` |
+| **publish** | Export to markdown or HTML | `publish` |
 
 ---
 
 ## Development Log
+
+### 2026-04-11 — Interactive stale, touch, batch, SSG link styles, HTML export
+
+- **`jot stale --interactive` (`-i`):** Steps through stale notes one by one. Per-note prompt: `(o)pen (t)ouch (d)elete (s)kip (q)uit`. Open delegates to configured editor.
+- **`Note.touch()`:** New method — updates `modified` frontmatter field to today and saves. Used by `--interactive` and `--batch touch`.
+- **`jot stale --batch touch|delete`:** Non-interactive batch action. `touch` updates modified dates on all stale notes; `delete` prompts once then removes all. Mutually exclusive with `--interactive`.
+- **`jot publish --ssg hugo|eleventy|jekyll`:** SSG-specific link style for markdown output. `hugo` = no extension, `eleventy`/`jekyll` = `.html`. Default unchanged (`.md` links).
+- **`jot publish --format html`:** Standalone HTML export via optional `markdown` package (`pip install jot[html]`). Writes `.html` files with minimal embedded CSS. Wikilinks resolve to `.html` hrefs. Mutually exclusive with `--ssg`.
+- **Test count:** 170 → 189 (19 new tests).
+- **Version bump:** 0.4.0 → 0.5.0.
 
 ### 2026-04-09 — MCP tests, optional dep fix, version bump, MCP wiring
 
@@ -63,7 +73,7 @@ Four features developed simultaneously in separate git worktrees and merged to m
 
 ## Future Roadmap
 
-1. **Stale Fix:** Interactive mode for `jot stale` to help clean up or refresh old notes.
-2. **Export:** Additional export formats for more complex site generation workflows.
+1. ~~**Stale Fix:** Interactive mode for `jot stale` to help clean up or refresh old notes.~~ ✓ Done (v0.5.0)
+2. ~~**Export:** Additional export formats for more complex site generation workflows.~~ ✓ Done (v0.5.0 — SSG link styles + HTML)
 3. **TUI Dashboard:** A persistent terminal UI for real-time vault status.
 4. **CI/CD:** Automated testing pipelines for cross-platform validation.

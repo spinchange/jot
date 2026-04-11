@@ -186,6 +186,11 @@ class Note:
     # Save
     # ------------------------------------------------------------------ #
 
+    def touch(self) -> None:
+        """Update the modified frontmatter field to today and save."""
+        self._data["modified"] = date.today().isoformat()
+        self.save()
+
     def save(self) -> None:
         self.path.write_text(fm.dump(self._data, self.body), encoding="utf-8")
 

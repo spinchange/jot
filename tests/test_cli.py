@@ -111,6 +111,75 @@ class TestRecent:
         assert result.exit_code == 0
 
 
+class TestStale:
+    def _make_old(self, vault_root: Path) -> Path:
+        """Write a note and backdate its mtime to 60 days ago."""
+        import time
+        p = vault_root / "old-note.md"
+        p.write_text("---\ntitle: Old Note\n---\n\nOld body.", encoding="utf-8")
+        old_ts = time.time() - 60 * 86400
+        import os; os.utime(p, (old_ts, old_ts))
+        return p
+
+    def test_stale_lists_old_notes(self, runner, cli_cfg, vault_root):
+        self._make_old(vault_root)
+        result = runner.invoke(cli, ["stale", "--days", "30"])
+        assert result.exit_code == 0
+        assert "old-note" in result.output
+
+    def test_batch_touch_updates_modified(self, runner, cli_cfg, vault_root):
+        p = self._make_old(vault_root)
+        result = runner.invoke(cli, ["stale", "--days", "30", "--batch", "touch"])
+        assert result.exit_code == 0
+        assert "Touched" in result.output
+        content = p.read_text(encoding="utf-8")
+        from datetime import date
+        assert date.today().isoformat() in content
+
+    def test_batch_delete_removes_files(self, runner, cli_cfg, vault_root):
+        p = self._make_old(vault_root)
+        result = runner.invoke(cli, ["stale", "--days", "30", "--batch", "delete"], input="y\n")
+        assert result.exit_code == 0
+        assert not p.exists()
+
+    def test_batch_delete_cancelled(self, runner, cli_cfg, vault_root):
+        p = self._make_old(vault_root)
+        result = runner.invoke(cli, ["stale", "--days", "30", "--batch", "delete"], input="n\n")
+        assert result.exit_code == 0
+        assert p.exists()
+
+    def test_interactive_and_batch_mutually_exclusive(self, runner, cli_cfg, vault_root):
+        self._make_old(vault_root)
+        result = runner.invoke(cli, ["stale", "--days", "30", "--interactive", "--batch", "touch"])
+        assert result.exit_code != 0
+
+    def test_interactive_touch(self, runner, cli_cfg, vault_root):
+        p = self._make_old(vault_root)
+        result = runner.invoke(cli, ["stale", "--days", "30", "--interactive"], input="t\n")
+        assert result.exit_code == 0
+        content = p.read_text(encoding="utf-8")
+        from datetime import date
+        assert date.today().isoformat() in content
+
+    def test_interactive_skip(self, runner, cli_cfg, vault_root):
+        p = self._make_old(vault_root)
+        result = runner.invoke(cli, ["stale", "--days", "30", "--interactive"], input="s\n")
+        assert result.exit_code == 0
+        assert p.exists()
+
+    def test_interactive_delete(self, runner, cli_cfg, vault_root):
+        p = self._make_old(vault_root)
+        result = runner.invoke(cli, ["stale", "--days", "30", "--interactive"], input="d\ny\n")
+        assert result.exit_code == 0
+        assert not p.exists()
+
+    def test_interactive_quit(self, runner, cli_cfg, vault_root):
+        p = self._make_old(vault_root)
+        result = runner.invoke(cli, ["stale", "--days", "30", "--interactive"], input="q\n")
+        assert result.exit_code == 0
+        assert p.exists()
+
+
 class TestPreview:
     def test_preview_existing(self, runner, cli_cfg):
         result = runner.invoke(cli, ["preview", "alpha"])
@@ -265,6 +334,71 @@ class TestPublish:
         # Wikilinks should be replaced with markdown links
         assert "[[" not in content
         assert "[" in content  # some link exists
+
+    def test_publish_default_md_links(self, runner, cli_cfg, vault_root, tmp_path):
+        out = tmp_path / "dist"
+        runner.invoke(cli, ["publish", "--output", str(out)])
+        content = (out / "alpha.md").read_text(encoding="utf-8")
+        # Default: links end with .md
+        assert ".md)" in content
+
+    def test_publish_ssg_hugo(self, runner, cli_cfg, vault_root, tmp_path):
+        out = tmp_path / "dist"
+        result = runner.invoke(cli, ["publish", "--output", str(out), "--ssg", "hugo"])
+        assert result.exit_code == 0
+        content = (out / "alpha.md").read_text(encoding="utf-8")
+        assert "[[" not in content
+        # Hugo style: no .md extension
+        assert ".md)" not in content
+        assert ".html)" not in content
+
+    def test_publish_ssg_eleventy(self, runner, cli_cfg, vault_root, tmp_path):
+        out = tmp_path / "dist"
+        result = runner.invoke(cli, ["publish", "--output", str(out), "--ssg", "eleventy"])
+        assert result.exit_code == 0
+        content = (out / "alpha.md").read_text(encoding="utf-8")
+        assert ".html)" in content
+
+    def test_publish_ssg_jekyll(self, runner, cli_cfg, vault_root, tmp_path):
+        out = tmp_path / "dist"
+        result = runner.invoke(cli, ["publish", "--output", str(out), "--ssg", "jekyll"])
+        assert result.exit_code == 0
+        content = (out / "alpha.md").read_text(encoding="utf-8")
+        assert ".html)" in content
+
+    def test_publish_html_and_ssg_mutually_exclusive(self, runner, cli_cfg, tmp_path):
+        out = tmp_path / "dist"
+        result = runner.invoke(cli, ["publish", "--output", str(out), "--format", "html", "--ssg", "hugo"])
+        assert result.exit_code != 0
+        assert "--ssg" in result.output
+
+    def test_publish_html_requires_package(self, runner, cli_cfg, tmp_path, monkeypatch):
+        # Simulate markdown not installed
+        import builtins
+        real_import = builtins.__import__
+        def mock_import(name, *args, **kwargs):
+            if name == "markdown":
+                raise ImportError("No module named 'markdown'")
+            return real_import(name, *args, **kwargs)
+        monkeypatch.setattr(builtins, "__import__", mock_import)
+        out = tmp_path / "dist"
+        result = runner.invoke(cli, ["publish", "--output", str(out), "--format", "html"])
+        assert result.exit_code != 0
+        assert "jot[html]" in result.output
+
+    def test_publish_html_writes_html_files(self, runner, cli_cfg, vault_root, tmp_path):
+        pytest.importorskip("markdown")
+        out = tmp_path / "dist"
+        result = runner.invoke(cli, ["publish", "--output", str(out), "--format", "html"])
+        assert result.exit_code == 0
+        assert "HTML file" in result.output
+        alpha_html = out / "alpha.html"
+        assert alpha_html.exists()
+        content = alpha_html.read_text(encoding="utf-8")
+        assert "<!DOCTYPE html>" in content
+        assert "Alpha" in content
+        assert "[[" not in content
+        assert ".html" in content  # wikilinks resolved to .html hrefs
 
 
 class TestRenameRepairLinks:
